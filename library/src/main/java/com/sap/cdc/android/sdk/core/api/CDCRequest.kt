@@ -17,7 +17,7 @@ class CDCRequest(
     var api: String = ""
     var parameters: MutableMap<String, String> = sortedMapOf(
         "apiKey" to siteConfig.apiKey,
-        "sdk" to "Android_${BuildConfig.VERSION}",
+        "sdk" to "Android_7.0.0",//"Android_${BuildConfig.VERSION}",
         "targetEnv" to "mobile",
         "format" to "json",
         "httpStatusCodes" to "true", //TODO: Make configurable.

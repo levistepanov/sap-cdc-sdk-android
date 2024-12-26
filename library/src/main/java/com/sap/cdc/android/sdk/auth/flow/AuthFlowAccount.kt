@@ -5,11 +5,17 @@ import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_GET_CONF
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_ID_TOKEN_EXCHANGE
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_SET_ACCOUNT_INFO
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_GET_PROVIDERS
+import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_INIT
+import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_PUSH_OPT_IN
 import com.sap.cdc.android.sdk.auth.AuthResponse
 import com.sap.cdc.android.sdk.auth.AuthenticationApi
+import com.sap.cdc.android.sdk.auth.AuthenticationService.Companion.CDC_AUTHENTICATION_SERVICE_SECURE_PREFS
+import com.sap.cdc.android.sdk.auth.AuthenticationService.Companion.CDC_DEVICE_INFO
+import com.sap.cdc.android.sdk.auth.DeviceInfo
 import com.sap.cdc.android.sdk.auth.IAuthResponse
 import com.sap.cdc.android.sdk.auth.session.SessionService
 import com.sap.cdc.android.sdk.core.CoreClient
+import com.sap.cdc.android.sdk.extensions.getEncryptedPreferences
 
 /**
  * Created by Tal Mirmelshtein on 10/06/2024
@@ -74,7 +80,8 @@ class AccountAuthFlow(coreClient: CoreClient, sessionService: SessionService) :
     suspend fun getAuthCode(parameters: MutableMap<String, String>? = mutableMapOf()): IAuthResponse {
         withParameters(parameters!!)
         parameters["resource"] = "urn:gigya:account" //TODO: check removing parameter?
-        parameters["subject_token_type"] = "urn:gigya:token-type:mobile" //TODO: check removing parameter?
+        parameters["subject_token_type"] =
+            "urn:gigya:token-type:mobile" //TODO: check removing parameter?
         parameters["response_type"] = "code"
         val exchangeAuthCodeResponse = AuthenticationApi(coreClient, sessionService).genericSend(
             EP_ACCOUNTS_ID_TOKEN_EXCHANGE,
@@ -96,5 +103,31 @@ class AccountAuthFlow(coreClient: CoreClient, sessionService: SessionService) :
             this.parameters
         )
         return AuthResponse(tfaProvidersResponse)
+    }
+
+    /**
+     * Initiate push TFA registration.
+     * NOTE: Requires deviceInfo to be sent.
+     */
+    suspend fun optInForPushTFA(): IAuthResponse {
+        val initTFAResponse = AuthenticationApi(coreClient, sessionService).genericSend(
+            EP_TFA_INIT,
+            mutableMapOf("provider" to "gigyaPush", "mode" to "register")
+        )
+        if (initTFAResponse.isError()) return AuthResponse(initTFAResponse)
+
+        val assertion = initTFAResponse.stringField("gigyaAssertion") ?: ""
+
+        // Obtain device info from secure storage.
+        val esp = coreClient.siteConfig.applicationContext.getEncryptedPreferences(
+            CDC_AUTHENTICATION_SERVICE_SECURE_PREFS
+        )
+        val deviceInfo = esp.getString(CDC_DEVICE_INFO, "") ?: ""
+
+        val pushOptInResponse = AuthenticationApi(coreClient, sessionService).genericSend(
+            EP_TFA_PUSH_OPT_IN,
+            mutableMapOf("gigyaAssertion" to assertion, "deviceInfo" to deviceInfo)
+        )
+        return AuthResponse(pushOptInResponse)
     }
 }

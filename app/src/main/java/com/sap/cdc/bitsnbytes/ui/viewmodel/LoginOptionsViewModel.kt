@@ -6,11 +6,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.viewModelScope
+import com.sap.cdc.android.sdk.auth.AuthState
 import com.sap.cdc.android.sdk.auth.biometric.BiometricAuth
 import com.sap.cdc.android.sdk.auth.session.SessionSecureLevel
+import com.sap.cdc.android.sdk.core.api.model.CDCError
+import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
 
 interface ILoginOptionsViewModel {
+
+    //region BIOMETRIC
 
     fun isBiometricActive(): Boolean
 
@@ -44,6 +50,19 @@ interface ILoginOptionsViewModel {
         // Stub.
     }
 
+    //endregion
+
+    //region TFA
+
+    fun optInForPushTFA(
+        success: () -> Unit,
+        onFailedWith: (CDCError?) -> Unit
+    ) {
+        //Stub.
+    }
+
+    //endregion
+
 }
 
 /**
@@ -57,6 +76,8 @@ class LoginOptionsViewModelPreview : ILoginOptionsViewModel {
 
 class LoginOptionsViewModel(context: Context) : BaseViewModel(context),
     ILoginOptionsViewModel {
+
+    //region BIOMETRIC
 
     /**
      * Create instance of the biometric auth (no need to singleton it).
@@ -148,5 +169,30 @@ class LoginOptionsViewModel(context: Context) : BaseViewModel(context),
             }
         )
     }
+
+    //endregion
+
+    //region TFA
+
+    override fun optInForPushTFA(
+        success: () -> Unit,
+        onFailedWith: (CDCError?) -> Unit
+    ) {
+        viewModelScope.launch {
+            val response = identityService.optInForPushTFA()
+            when (response.state()) {
+                AuthState.SUCCESS -> {
+                    // Success.
+                    success()
+                }
+
+                else -> {
+                    onFailedWith(response.toDisplayError())
+                }
+            }
+        }
+    }
+
+    //endregion
 }
 

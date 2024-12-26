@@ -522,6 +522,8 @@ internal class AuthResolvers(
 interface IAuthTFA {
 
     suspend fun getProviders(regToken: String): IAuthResponse
+
+    suspend fun optInForPushAuthentication() : IAuthResponse
 }
 
 internal class AuthTFA(
@@ -532,6 +534,11 @@ internal class AuthTFA(
     override suspend fun getProviders(regToken: String): IAuthResponse {
         val accountFlow = AccountAuthFlow(coreClient, sessionService)
         return accountFlow.getTFAProviders(mutableMapOf("regToken" to regToken))
+    }
+
+    override suspend fun optInForPushAuthentication(): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        return accountFlow.optInForPushTFA()
     }
 
 }

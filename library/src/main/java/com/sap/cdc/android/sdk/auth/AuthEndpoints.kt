@@ -30,6 +30,8 @@ class AuthEndpoints {
         const val EP_OTP_UPDATE = "accounts.otp.update"
 
         const val EP_TFA_GET_PROVIDERS = "accounts.tfa.getProviders"
+        const val EP_TFA_INIT = "accounts.tfa.initTFA"
+        const val EP_TFA_PUSH_OPT_IN = "accounts.tfa.push.optin"
 
         // May be redundant cause connection can be done using notifySocialLogin with
         // loginMode = connect.

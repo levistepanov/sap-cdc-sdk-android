@@ -122,6 +122,8 @@ dependencies {
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.accompanist.permissions)
+
 
 
 }

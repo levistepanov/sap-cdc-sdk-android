@@ -42,6 +42,7 @@ class AuthenticationApi(
                 CDCDebuggable.log("CDC_AuthenticationApi", "getIds error: ${ids.errorCode()}")
             }
         }
+        parameters["gmid"] = sessionService.gmidLatest() ?: ""
         return super.genericSend(api, parameters, method, headers)
     }
 

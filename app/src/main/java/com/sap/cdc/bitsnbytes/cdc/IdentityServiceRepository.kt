@@ -3,20 +3,23 @@ package com.sap.cdc.bitsnbytes.cdc
 import android.content.Context
 import android.util.Log
 import androidx.activity.ComponentActivity
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.firebase.messaging.FirebaseMessaging
 import com.sap.cdc.android.sdk.auth.AuthenticationService
 import com.sap.cdc.android.sdk.auth.IAuthResponse
 import com.sap.cdc.android.sdk.auth.ResolvableContext
+import com.sap.cdc.android.sdk.auth.notification.CDCMessageEventBus
+import com.sap.cdc.android.sdk.auth.notification.IFCMTokenRequest
+import com.sap.cdc.android.sdk.auth.notification.MessageEvent
 import com.sap.cdc.android.sdk.auth.provider.IAuthenticationProvider
 import com.sap.cdc.android.sdk.auth.provider.SSOAuthenticationProvider
 import com.sap.cdc.android.sdk.auth.provider.WebAuthenticationProvider
 import com.sap.cdc.android.sdk.auth.session.Session
 import com.sap.cdc.android.sdk.auth.session.SessionSecureLevel
 import com.sap.cdc.android.sdk.core.SiteConfig
+import com.sap.cdc.android.sdk.screensets.WebBridgeJS
 import com.sap.cdc.bitsnbytes.social.FacebookAuthenticationProvider
 import com.sap.cdc.bitsnbytes.social.GoogleAuthenticationProvider
-import com.sap.cdc.bitsnbytes.social.LineAuthenticationProvider
-import com.sap.cdc.bitsnbytes.social.WeChatAuthenticationProvider
-import com.sap.cdc.android.sdk.screensets.WebBridgeJS
 
 /**
  * Created by Tal Mirmelshtein on 10/06/2024
@@ -48,6 +51,20 @@ class IdentityServiceRepository private constructor(context: Context) {
      * Initialize authentication service.
      */
     var authenticationService = AuthenticationService(siteConfig)
+        .registerForPushAuthentication(object : IFCMTokenRequest {
+
+            override fun requestFCMToken() {
+                FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
+                    if (!task.isSuccessful) {
+                        return@OnCompleteListener
+                    }
+
+                    // Get new FCM registration token
+                    val token = task.result
+                    CDCMessageEventBus.emit(MessageEvent.EventWithToken(token))
+                })
+            }
+        })
 
     /**
      * Authentication providers map.
@@ -219,6 +236,14 @@ class IdentityServiceRepository private constructor(context: Context) {
     suspend fun otpSignIn(
         parameters: MutableMap<String, String>
     ): IAuthResponse = authenticationService.authenticate().otpSendCode(parameters)
+
+    //endregion
+
+    //region PUSH
+
+    suspend fun optInForPushTFA(): IAuthResponse {
+        return authenticationService.tfa().optInForPushAuthentication()
+    }
 
     //endregion
 

@@ -1,5 +1,7 @@
 package com.sap.cdc.bitsnbytes.ui.view.flow
 
+import android.Manifest
+import android.annotation.SuppressLint
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.background
@@ -25,6 +27,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
+import com.sap.cdc.android.sdk.CDCDebuggable
 import com.sap.cdc.bitsnbytes.ui.theme.AppTheme
 import com.sap.cdc.bitsnbytes.ui.view.custom.ActionOutlineButton
 import com.sap.cdc.bitsnbytes.ui.view.custom.ActionOutlineInverseButton
@@ -39,10 +44,17 @@ import com.sap.cdc.bitsnbytes.ui.viewmodel.LoginOptionsViewModelPreview
  * Copyright: SAP LTD.
  */
 
+@SuppressLint("InlinedApi")
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun LoginOptionsView(viewModel: ILoginOptionsViewModel) {
     val context = LocalContext.current
     val executor = remember { ContextCompat.getMainExecutor(context) }
+
+
+    val notificationPermission = rememberPermissionState(
+        permission = Manifest.permission.POST_NOTIFICATIONS
+    )
 
     // UI elements.
 
@@ -65,7 +77,24 @@ fun LoginOptionsView(viewModel: ILoginOptionsViewModel) {
             title = "Push 2-Factor Authentication",
             status = "Deactivated",
             actionLabel = "Activate",
-            onClick = { /* Handle activation */ },
+            onClick = {
+                if (!notificationPermission.hasPermission) {
+                    notificationPermission.launchPermissionRequest()
+                } else {
+                    viewModel.optInForPushTFA(
+                        success = {
+                            // Handle success
+                        },
+                        onFailedWith = {
+                            // Handle failure
+                            CDCDebuggable.log(
+                                tag = "LoginOptionsView",
+                                message = "Failed to opt-in for push TFA"
+                            )
+                        }
+                    )
+                }
+            },
             inverse = false
         )
         OptionCard(
