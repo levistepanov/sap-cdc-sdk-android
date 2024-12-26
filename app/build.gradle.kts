@@ -97,6 +97,7 @@ dependencies {
     implementation(libs.bundles.lifecycle)
     implementation(libs.bundles.compose)
     implementation(libs.bundles.material)
+    implementation(libs.firebase.messaging.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -120,5 +121,7 @@ dependencies {
     implementation(libs.googleid)
 
     implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+
 
 }

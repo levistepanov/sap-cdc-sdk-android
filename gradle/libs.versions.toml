@@ -1,6 +1,7 @@
 [versions]
 browser = "1.8.0"
 firebaseBom = "33.7.0"
+firebaseMessaging = "24.1.0"
 kotlin = "2.0.0"
 android = "8.6.1"
 ktx = "1.15.0"
@@ -31,6 +32,7 @@ googleServices = "4.4.2"
 espressoCore = "3.6.1"
 junit = "4.13.2"
 junitVersion = "1.2.1"
+firebaseMessagingKtx = "24.1.0"
 
 [libraries]
 androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
@@ -39,6 +41,7 @@ androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "a
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging", version.ref = "firebaseMessaging" }
 material = { module = "com.google.android.material:material", version.ref = "material" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 
@@ -82,6 +85,7 @@ mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockito
 facebook-login = { module = "com.facebook.android:facebook-login", version.ref = "facebookLogin" }
 linesdk = { module = "com.linecorp.linesdk:linesdk", version.ref = "linesdk" }
 wechat = { module = "com.tencent.mm.opensdk:wechat-sdk-android-without-mta", version.ref = "wechatSdkAndroidWithoutMta" }
+firebase-messaging-ktx = { group = "com.google.firebase", name = "firebase-messaging-ktx", version.ref = "firebaseMessagingKtx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "android" }

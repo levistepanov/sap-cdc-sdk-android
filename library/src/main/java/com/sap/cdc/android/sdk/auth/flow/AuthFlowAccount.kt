@@ -4,6 +4,7 @@ import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_GET_ACCO
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_GET_CONFLICTING_ACCOUNTS
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_ID_TOKEN_EXCHANGE
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_SET_ACCOUNT_INFO
+import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_GET_PROVIDERS
 import com.sap.cdc.android.sdk.auth.AuthResponse
 import com.sap.cdc.android.sdk.auth.AuthenticationApi
 import com.sap.cdc.android.sdk.auth.IAuthResponse
@@ -80,6 +81,20 @@ class AccountAuthFlow(coreClient: CoreClient, sessionService: SessionService) :
             this.parameters
         )
         return AuthResponse(exchangeAuthCodeResponse)
+    }
 
+
+    /**
+     * Request account two factor authentication providers:
+     * Active - Providers that are currently active and the user can use to authenticate.
+     * Inactive - Providers that are currently inactive and the user can activate to use for authentication.
+     */
+    suspend fun getTFAProviders(parameters: MutableMap<String, String>? = mutableMapOf()): IAuthResponse {
+        withParameters(parameters!!)
+        val tfaProvidersResponse = AuthenticationApi(coreClient, sessionService).genericSend(
+            EP_TFA_GET_PROVIDERS,
+            this.parameters
+        )
+        return AuthResponse(tfaProvidersResponse)
     }
 }

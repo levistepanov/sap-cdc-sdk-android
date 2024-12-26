@@ -1,5 +1,7 @@
 <resources>
 
+    <string name="app_name">Bits n Bytes V</string>
+
     <!-- Uncomment and replace the placeholders with the actual values -->
 
 <!--    SDK configuration-->

@@ -517,5 +517,21 @@ internal class AuthResolvers(
         val authResponse = connectResolver.notifySocialLogin()
         return authResponse
     }
+}
+
+interface IAuthTFA {
+
+    suspend fun getProviders(regToken: String): IAuthResponse
+}
+
+internal class AuthTFA(
+    private val coreClient: CoreClient,
+    private val sessionService: SessionService
+) : IAuthTFA {
+
+    override suspend fun getProviders(regToken: String): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        return accountFlow.getTFAProviders(mutableMapOf("regToken" to regToken))
+    }
 
 }
