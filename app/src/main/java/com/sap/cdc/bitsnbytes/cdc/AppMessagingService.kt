@@ -41,8 +41,8 @@ class AppMessagingService() : FirebaseMessagingService() {
 
     override fun onDestroy() {
         CDCDebuggable.log(LOG_TAG, "onDestroy:")
+        CDCMessageEventBus.dispose()
         super.onDestroy()
-        serviceScope.cancel() // Cancel the scope to avoid memory leaks
     }
 
 }

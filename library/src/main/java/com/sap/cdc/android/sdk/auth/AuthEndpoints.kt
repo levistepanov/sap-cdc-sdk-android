@@ -29,9 +29,13 @@ class AuthEndpoints {
         const val EP_OTP_LOGIN = "accounts.otp.login"
         const val EP_OTP_UPDATE = "accounts.otp.update"
 
-        const val EP_TFA_GET_PROVIDERS = "accounts.tfa.getProviders"
         const val EP_TFA_INIT = "accounts.tfa.initTFA"
+        const val EP_TFA_FINALIZE = "accounts.tfa.finalizeTFA"
+        const val EP_TFA_GET_PROVIDERS = "accounts.tfa.getProviders"
         const val EP_TFA_PUSH_OPT_IN = "accounts.tfa.push.optin"
+        const val EP_TFA_EMAIL_GET = "accounts.tfa.email.getEmails"
+        const val EP_TFA_EMAILS_SEND_CODE = "accounts.tfa.email.sendVerificationCode"
+        const val EP_TFA_EMAILS_COMPLETE_VERIFICATION = "accounts.tfa.email.completeVerification"
 
         // May be redundant cause connection can be done using notifySocialLogin with
         // loginMode = connect.

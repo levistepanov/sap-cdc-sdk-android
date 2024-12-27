@@ -69,9 +69,12 @@ class AuthenticationService(
      * Registers the device for push authentication handling. TFA & Auth flows.
      */
     fun registerForPushAuthentication(
-        fcmTokenRequest: IFCMTokenRequest
+        fcmTokenRequest: IFCMTokenRequest,
+        notificationContentView: Class<*>? = null,
     ) = apply {
-        notificationManager = CDCNotificationManager(this)
+        notificationManager = CDCNotificationManager(
+            authenticationService = this,
+        )
         fcmTokenRequest.requestFCMToken()
     }
 

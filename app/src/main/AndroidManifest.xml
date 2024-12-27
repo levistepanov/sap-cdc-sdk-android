@@ -35,6 +35,22 @@
         </activity>
 
         <activity
+            android:name=".ui.activity.CDCPushAuthActivity"
+            android:allowTaskReparenting="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.CXCDCAndroidSDK" />
+
+        <receiver
+            android:name="com.sap.cdc.android.sdk.auth.notification.CDCNotificationReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="approve" />
+                <action android:name="deny" />
+            </intent-filter>
+        </receiver>
+
+        <activity
             android:name="com.sap.cdc.android.sdk.auth.provider.activity.WebLoginActivity"
             android:allowTaskReparenting="true"
             android:exported="true"

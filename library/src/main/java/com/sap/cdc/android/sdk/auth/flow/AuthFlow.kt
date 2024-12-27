@@ -104,7 +104,7 @@ open class AuthFlow(val coreClient: CoreClient, val sessionService: SessionServi
                         tfaAuth.getProviders(resolvableContext.regToken!!)
                     val tfaProviders =
                         tfaProvidersAuthResponse.cdcResponse().serializeTo<TFAProvidersEntity>()
-                    resolvableContext.tfa = ResolvableTFA(tfaProviders)
+                    resolvableContext.tfa = ResolvableTFA(tfaProviders = tfaProviders)
                 }
             }
             authResponse.resolvableContext = resolvableContext

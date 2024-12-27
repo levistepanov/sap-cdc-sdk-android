@@ -14,3 +14,10 @@ data class TFAProvidersEntity(
     val activeProviders: List<TFAProviderEntity> = emptyList(),
     val inactiveProviders: List<TFAProviderEntity> = emptyList()
 )
+
+@Serializable
+data class TFAEmailEntity(
+    val id: String,
+    val obfuscated: String,
+    val lastVerification: String,
+)

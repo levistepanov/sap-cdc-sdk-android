@@ -20,6 +20,7 @@ import com.sap.cdc.android.sdk.core.SiteConfig
 import com.sap.cdc.android.sdk.screensets.WebBridgeJS
 import com.sap.cdc.bitsnbytes.social.FacebookAuthenticationProvider
 import com.sap.cdc.bitsnbytes.social.GoogleAuthenticationProvider
+import com.sap.cdc.bitsnbytes.ui.activity.CDCPushAuthActivity
 
 /**
  * Created by Tal Mirmelshtein on 10/06/2024
@@ -51,7 +52,9 @@ class IdentityServiceRepository private constructor(context: Context) {
      * Initialize authentication service.
      */
     var authenticationService = AuthenticationService(siteConfig)
-        .registerForPushAuthentication(object : IFCMTokenRequest {
+        .registerForPushAuthentication(
+            notificationContentView = CDCPushAuthActivity::class.java,
+            fcmTokenRequest = object : IFCMTokenRequest {
 
             override fun requestFCMToken() {
                 FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->

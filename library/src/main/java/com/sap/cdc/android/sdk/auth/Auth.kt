@@ -15,6 +15,7 @@ import com.sap.cdc.android.sdk.core.CoreClient
 import com.sap.cdc.android.sdk.core.SiteConfig
 import com.sap.cdc.android.sdk.core.api.CDCResponse
 import com.sap.cdc.android.sdk.core.api.model.CDCError
+import io.ktor.http.parameters
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -399,7 +400,10 @@ internal class AuthResolvers(
         val linkAccountResolverAuthResponse = linkAccountResolver.login()
         return when (linkAccountResolverAuthResponse.state()) {
             AuthState.SUCCESS -> {
-                connectAccount(resolvableContext.linking?.provider, resolvableContext.linking?.authToken)
+                connectAccount(
+                    resolvableContext.linking?.provider,
+                    resolvableContext.linking?.authToken
+                )
             }
 
             else -> linkAccountResolverAuthResponse
@@ -423,7 +427,10 @@ internal class AuthResolvers(
         val linkAccountResolverAuthResponse = linkAccountResolver.signIn()
         return when (linkAccountResolverAuthResponse.state()) {
             AuthState.SUCCESS -> {
-                connectAccount(resolvableContext.linking?.provider, resolvableContext.linking?.authToken)
+                connectAccount(
+                    resolvableContext.linking?.provider,
+                    resolvableContext.linking?.authToken
+                )
             }
 
             else -> linkAccountResolverAuthResponse
@@ -523,7 +530,17 @@ interface IAuthTFA {
 
     suspend fun getProviders(regToken: String): IAuthResponse
 
-    suspend fun optInForPushAuthentication() : IAuthResponse
+    suspend fun optInForPushAuthentication(): IAuthResponse
+
+    suspend fun getRegisteredEmails(
+        resolvableContext: ResolvableContext
+    ): IAuthResponse
+
+    suspend fun sendEmailCode(
+        resolvableContext: ResolvableContext,
+        emailAddress: String,
+        language: String?
+    ): IAuthResponse
 }
 
 internal class AuthTFA(
@@ -538,7 +555,31 @@ internal class AuthTFA(
 
     override suspend fun optInForPushAuthentication(): IAuthResponse {
         val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        accountFlow.parameters["provider"] = "gigyaPush"
+        accountFlow.parameters["mode"] = "register"
         return accountFlow.optInForPushTFA()
+    }
+
+    override suspend fun getRegisteredEmails(
+        resolvableContext: ResolvableContext
+    ): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        accountFlow.parameters["regToken"] = resolvableContext.regToken!!
+        accountFlow.parameters["provider"] = "gigyaEmail"
+        accountFlow.parameters["mode"] = "verify"
+        return accountFlow.getRegisteredEmails()
+    }
+
+    override suspend fun sendEmailCode(
+        resolvableContext: ResolvableContext,
+        emailAddress: String,
+        language: String?
+    ): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        accountFlow.parameters["gigyaAssertion"] = resolvableContext.tfa?.assertion!!
+        accountFlow.parameters["emailID"] = emailAddress
+        accountFlow.parameters["lang"] = language ?: "en"
+        return accountFlow.sendEmailCode()
     }
 
 }

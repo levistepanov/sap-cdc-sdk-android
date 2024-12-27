@@ -4,6 +4,8 @@ import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_GET_ACCO
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_GET_CONFLICTING_ACCOUNTS
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_ID_TOKEN_EXCHANGE
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_SET_ACCOUNT_INFO
+import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_EMAILS_SEND_CODE
+import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_EMAIL_GET
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_GET_PROVIDERS
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_INIT
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_PUSH_OPT_IN
@@ -11,11 +13,14 @@ import com.sap.cdc.android.sdk.auth.AuthResponse
 import com.sap.cdc.android.sdk.auth.AuthenticationApi
 import com.sap.cdc.android.sdk.auth.AuthenticationService.Companion.CDC_AUTHENTICATION_SERVICE_SECURE_PREFS
 import com.sap.cdc.android.sdk.auth.AuthenticationService.Companion.CDC_DEVICE_INFO
-import com.sap.cdc.android.sdk.auth.DeviceInfo
 import com.sap.cdc.android.sdk.auth.IAuthResponse
+import com.sap.cdc.android.sdk.auth.ResolvableContext
+import com.sap.cdc.android.sdk.auth.ResolvableTFA
 import com.sap.cdc.android.sdk.auth.session.SessionService
+import com.sap.cdc.android.sdk.auth.tfa.TFAEmailEntity
 import com.sap.cdc.android.sdk.core.CoreClient
 import com.sap.cdc.android.sdk.extensions.getEncryptedPreferences
+import kotlinx.serialization.json.Json
 
 /**
  * Created by Tal Mirmelshtein on 10/06/2024
@@ -112,9 +117,12 @@ class AccountAuthFlow(coreClient: CoreClient, sessionService: SessionService) :
     suspend fun optInForPushTFA(): IAuthResponse {
         val initTFAResponse = AuthenticationApi(coreClient, sessionService).genericSend(
             EP_TFA_INIT,
-            mutableMapOf("provider" to "gigyaPush", "mode" to "register")
+            parameters
         )
         if (initTFAResponse.isError()) return AuthResponse(initTFAResponse)
+
+        // Clear parameters for reuse.
+        parameters.clear()
 
         val assertion = initTFAResponse.stringField("gigyaAssertion") ?: ""
 
@@ -124,10 +132,63 @@ class AccountAuthFlow(coreClient: CoreClient, sessionService: SessionService) :
         )
         val deviceInfo = esp.getString(CDC_DEVICE_INFO, "") ?: ""
 
+        parameters["gigyaAssertion"] = assertion
+        parameters["deviceInfo"] = deviceInfo
         val pushOptInResponse = AuthenticationApi(coreClient, sessionService).genericSend(
             EP_TFA_PUSH_OPT_IN,
-            mutableMapOf("gigyaAssertion" to assertion, "deviceInfo" to deviceInfo)
+            parameters
         )
         return AuthResponse(pushOptInResponse)
+    }
+
+    suspend fun getRegisteredEmails(): IAuthResponse {
+        val initTFAResponse = AuthenticationApi(coreClient, sessionService).genericSend(
+            EP_TFA_INIT,
+            parameters
+        )
+        if (initTFAResponse.isError()) return AuthResponse(initTFAResponse)
+
+        // Clear parameters for reuse.
+        parameters.clear()
+
+        val assertion = initTFAResponse.stringField("gigyaAssertion") ?: ""
+
+        parameters["gigyaAssertion"] = assertion
+        val getEmailsResponse = AuthenticationApi(coreClient, sessionService).genericSend(
+            EP_TFA_EMAIL_GET,
+            parameters
+        )
+        if (getEmailsResponse.isError()) return AuthResponse(getEmailsResponse)
+
+        val emailsJson = getEmailsResponse.stringField("emails")
+        val emails = Json.decodeFromString<List<TFAEmailEntity>>(emailsJson!!)
+
+        val authResponse = AuthResponse(getEmailsResponse)
+        authResponse.resolvableContext =
+            ResolvableContext(
+                tfa = ResolvableTFA(
+                    assertion = assertion,
+                    emails = emails
+                )
+            )
+        return authResponse
+    }
+
+    suspend fun sendEmailCode(): IAuthResponse {
+        val sendCodeResponse = AuthenticationApi(coreClient, sessionService).genericSend(
+            EP_TFA_EMAILS_SEND_CODE,
+            parameters
+        )
+        if (sendCodeResponse.isError()) return AuthResponse(sendCodeResponse)
+        val assertion = sendCodeResponse.stringField("gigyaAssertion") ?: ""
+        val phvToken = sendCodeResponse.stringField("phvToken") ?: ""
+        val authResponse = AuthResponse(sendCodeResponse)
+        authResponse.resolvableContext = ResolvableContext(
+            tfa = ResolvableTFA(
+                assertion = assertion,
+                phvToken = phvToken
+            )
+        )
+        return authResponse
     }
 }
