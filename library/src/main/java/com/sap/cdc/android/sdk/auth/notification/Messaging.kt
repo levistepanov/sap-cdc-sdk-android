@@ -13,11 +13,15 @@ import com.sap.cdc.android.sdk.CDCDebuggable
 import com.sap.cdc.android.sdk.auth.AuthenticationService
 import com.sap.cdc.android.sdk.auth.DeviceInfo
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import java.security.SecureRandom
+import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
 
@@ -26,6 +30,10 @@ import kotlin.math.abs
  * Copyright: SAP LTD.
  */
 
+/**
+ * CDC Message Event Bus.
+ * A shared flow event bus for message events.
+ */
 object CDCMessageEventBus {
 
     private val eventFlow = MutableSharedFlow<MessageEvent>()
@@ -36,7 +44,6 @@ object CDCMessageEventBus {
     }
 
     fun dispose() {
-        scope?.cancel()
         scope = null
     }
 
@@ -46,29 +53,48 @@ object CDCMessageEventBus {
         }
     }
 
+    fun subscribeToReceiver(block: suspend (MessageEvent) -> Unit) {
+        scope?.let {
+            eventFlow.onEach(block).launchIn(it)
+        }
+    }
+
     fun emit(appEvent: MessageEvent) = scope?.launch { eventFlow.emit(appEvent) }
 }
 
 
+/**
+ * Message event.
+ * Represents a message event.
+ */
 sealed class MessageEvent {
 
     data class EventWithToken(val token: String) : MessageEvent()
 
     data class EventWithRemoteMessageData(val data: Map<String, String>) : MessageEvent()
+
+    data class EventWithRemoteActionData(val action: String, val data: CDCNotificationActionData) :
+        MessageEvent()
 }
 
 
+/**
+ * Token request interface.
+ * The SDK requires tracking the FCM token in order to receive push notifications.
+ * This interface is used with conjunction with the  FirebaseMessaging.getInstance().token API.
+ */
 interface IFCMTokenRequest {
 
     fun requestFCMToken()
 }
 
 /**
- * Notification issuer for push authentication flows.
+ * CDC Notification Manager.
+ * Manages push notifications for CDC authentication flows.
  */
 class CDCNotificationManager(
     private val authenticationService: AuthenticationService,
-    private val notificationOptions: CDCNotificationOptions? = CDCNotificationOptions(),
+    private val notificationOptions: CDCNotificationOptions,
 ) {
 
     companion object {
@@ -81,29 +107,61 @@ class CDCNotificationManager(
         const val BUNDLE_ID_ACTION_DATA = "cdc_action_data"
     }
 
+    private lateinit var notificationManager: NotificationManagerCompat
+
     init {
+        // Create a new CoroutineScope with a Job
+        val job = Job()
+        val scope = CoroutineScope(Dispatchers.Main + job)
+
+        CDCMessageEventBus.initialize(scope)
         CDCMessageEventBus.subscribe {
             when (it) {
                 is MessageEvent.EventWithToken -> onNewToken(it.token)
                 is MessageEvent.EventWithRemoteMessageData -> onMessageReceived(it.data)
+                is MessageEvent.EventWithRemoteActionData -> onActionReceived(it.action, it.data)
             }
+        }
+
+        // Reference context.
+        val context = authenticationService.siteConfig.applicationContext
+
+        // Create notification manager.
+        val notificationManager = NotificationManagerCompat.from(context)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CDC_NOTIFICATIONS_CHANNEL_ID,
+                notificationOptions.notificationChannelTitle,
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            notificationManager.createNotificationChannel(channel)
         }
     }
 
+    /**
+     * Handle new token.
+     * @param token: The new token.
+     */
     private fun onNewToken(token: String) {
         // Handle the token
         authenticationService.updateDeviceInfo(DeviceInfo(pushToken = token))
     }
 
+    /**
+     * Handle message received.
+     * @param data: The data fields of the notification.
+     */
     private fun onMessageReceived(data: Map<String, String>) {
         // Handle the message
         val mode = data["mode"] ?: ""
         when (mode) {
             "optin", "verify" -> {
-                notify(mode, data)
+                CDCDebuggable.log(LOG_TAG, "Received actionable notification with mode: $mode")
+                notifyActionable(mode, data)
             }
 
             "cancel" -> {
+                CDCDebuggable.log(LOG_TAG, "Received cancel notification.")
                 val gigyaAssertion = data["gigyaAssertion"]
                 if (gigyaAssertion != null) {
                     cancel(abs(gigyaAssertion.hashCode().toDouble()).toInt())
@@ -114,7 +172,124 @@ class CDCNotificationManager(
         }
     }
 
-    private fun notify(mode: String, data: Map<String, String>) {
+    /**
+     * Handle actionable notification.
+     * @param action: The action of the notification.
+     * @param data: The data fields of the notification.
+     */
+    private fun onActionReceived(action: String, data: CDCNotificationActionData) {
+        CDCDebuggable.log(LOG_TAG, "onActionReceived: action: $action, data: $data")
+
+        when (action) {
+            "Approve" -> {
+
+                // Create a new CoroutineScope with a Job
+                val job = Job()
+                val scope = CoroutineScope(Dispatchers.Main + job)
+
+                when (data.mode) {
+                    "optin" -> {
+                        scope.launch {
+                            try {
+                                CDCDebuggable.log(LOG_TAG, "Finalizing push TFA.")
+                                val authResponse =
+                                    authenticationService.tfa().finalizeOtpInForPushAuthentication(
+                                        mutableMapOf(
+                                            "verificationToken" to data.verificationToken,
+                                            "gigyaAssertion" to data.gigyaAssertion
+                                        )
+                                    )
+                                if (authResponse.cdcResponse().isError()) {
+                                    CDCDebuggable.log(
+                                        LOG_TAG,
+                                        "Error finalizing push TFA: ${
+                                            authResponse.cdcResponse().errorMessage()
+                                        }"
+                                    )
+                                    return@launch
+                                }
+                                //Send notification.
+                                notify(notificationOptions.actionVerified?.title!!, "")
+                            } finally {
+                                CDCDebuggable.log(LOG_TAG, "Finalized push TFA. Canceling job")
+                                // Cancel the scope once the coroutine completes
+                                job.cancel()
+                            }
+                        }
+                    }
+
+                    "verify" -> {
+                        scope.launch {
+                            try {
+                                CDCDebuggable.log(LOG_TAG, "Verifying push TFA.")
+                                val authResponse = authenticationService.tfa().verifyPushTFA(
+                                    mutableMapOf(
+                                        "verificationToken" to data.verificationToken,
+                                        "gigyaAssertion" to data.gigyaAssertion
+                                    )
+                                )
+                                if (authResponse.cdcResponse().isError()) {
+                                    CDCDebuggable.log(
+                                        LOG_TAG,
+                                        "Error verifying push TFA: ${
+                                            authResponse.cdcResponse().errorMessage()
+                                        }"
+                                    )
+                                    return@launch
+                                }
+                                //Send notification.
+                                notify(notificationOptions.actionVerified?.title!!, "")
+                            } finally {
+                                CDCDebuggable.log(LOG_TAG, "Verified push TFA. Canceling job")
+                                // Cancel the scope once the coroutine completes
+                                job.cancel()
+                            }
+                        }
+                    }
+                }
+            }
+
+            "Deny" -> {
+                // Redundant.
+            }
+        }
+    }
+
+    /**
+     * Notify notification.
+     * @param title: The title of the notification.
+     * @param body: The body of the notification.
+     */
+    private fun notify(title: String, body: String) {
+        // Reference context.
+        val context = authenticationService.siteConfig.applicationContext
+
+        // Build notification.
+        val builder: NotificationCompat.Builder =
+            NotificationCompat.Builder(context, CDC_NOTIFICATIONS_CHANNEL_ID)
+                .setSmallIcon(notificationOptions.smallIcon!!)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(notificationOptions.autoCancel!!)
+
+        // Set a 3 second timeout for the notification display.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder.setTimeoutAfter(TimeUnit.SECONDS.toMillis(3))
+        }
+
+        // Notify.
+        if (notificationManager.areNotificationsEnabled()) {
+            notificationManager.notify(SecureRandom().nextInt(), builder.build())
+        }
+    }
+
+    /**
+     * Notify actionable notification.
+     * @param mode: The mode of the notification.
+     * @param data: The data fields of the notification.
+     */
+    private fun notifyActionable(mode: String, data: Map<String, String>) {
 
         // Parse data fields from cdc push.
         val title = data["title"]
@@ -133,12 +308,8 @@ class CDCNotificationManager(
 
         val actionData =
             CDCNotificationActionData(mode, gigyaAssertion, verificationToken, notificationId)
-
         // Reference context.
         val context = authenticationService.siteConfig.applicationContext
-
-        // Create notification manager.
-        val notificationManager = NotificationManagerCompat.from(context)
 
         // Build notification.
         val builder: NotificationCompat.Builder =
@@ -147,18 +318,12 @@ class CDCNotificationManager(
                 .setContentTitle(title?.trim { it <= ' ' } ?: "")
                 .setContentText(body?.trim { it <= ' ' } ?: "")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setTimeoutAfter(notificationOptions?.notificationTimeout!!)
+                .setTimeoutAfter(notificationOptions.notificationTimeout!!)
                 .setAutoCancel(true)
 
         // Notification channel required for Android O and above.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CDC_NOTIFICATIONS_CHANNEL_ID,
-                notificationOptions.notificationChannelTitle,
-                NotificationManager.IMPORTANCE_HIGH
-            )
-            builder.setChannelId(channel.id)
-            notificationManager.createNotificationChannel(channel)
+            builder.setChannelId(CDC_NOTIFICATIONS_CHANNEL_ID)
         }
 
         // Define actions pending intent flags.
@@ -229,6 +394,10 @@ class CDCNotificationManager(
         }
     }
 
+    /**
+     * Cancel notification by id.
+     * @param idToCancel: The id of the notification to cancel.
+     */
     private fun cancel(idToCancel: Int) {
         if (idToCancel == 0) {
             return
@@ -247,6 +416,10 @@ class CDCNotificationManager(
     }
 }
 
+/**
+ * Notification receiver for push authentication flows.
+ * Receives actionable notifications and emits the action data.
+ */
 class CDCNotificationReceiver : BroadcastReceiver() {
 
     companion object {
@@ -254,6 +427,8 @@ class CDCNotificationReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
+        CDCDebuggable.log(LOG_TAG, "onReceive: ")
+
         // Check if broadcast is actionable. return if not.
         if (intent == null) {
             CDCDebuggable.log(LOG_TAG, "Intent is null.")
@@ -265,7 +440,6 @@ class CDCNotificationReceiver : BroadcastReceiver() {
         }
 
         // Broadcast is actionable.
-
         val actionData: CDCNotificationActionData? =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableExtra(
@@ -280,35 +454,15 @@ class CDCNotificationReceiver : BroadcastReceiver() {
         val notificationManager = NotificationManagerCompat.from(context!!)
         notificationManager.cancel(actionData?.notificationId ?: 0)
 
-        // Handle the action.
-        when (intent.action) {
-            "Approve" -> {
-                // Handle approve action.
-                when (actionData?.mode) {
-                    "optin" -> {
-                        // Handle optin action.
-                    }
+        CDCDebuggable.log(LOG_TAG, "onReceive: emitting actionData: $actionData")
 
-                    "verify" -> {
-                        // Handle verify action.
-                    }
-                }
-            }
-
-            "Deny" -> {
-                // Handle deny action.
-                when (actionData?.mode) {
-                    "optin" -> {
-                        // Handle optin action.
-                    }
-
-                    "verify" -> {
-                        // Handle verify action.
-                    }
-                }
-            }
-        }
-
+        // Emit action data.
+        CDCMessageEventBus.emit(
+            MessageEvent.EventWithRemoteActionData(
+                intent.action!!,
+                actionData!!
+            )
+        )
     }
 
 }

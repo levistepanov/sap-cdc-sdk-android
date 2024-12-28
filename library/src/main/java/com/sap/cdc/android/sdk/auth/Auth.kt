@@ -532,6 +532,10 @@ interface IAuthTFA {
 
     suspend fun optInForPushAuthentication(): IAuthResponse
 
+    suspend fun finalizeOtpInForPushAuthentication(parameters: MutableMap<String, String>): IAuthResponse
+
+    suspend fun verifyPushTFA(parameters: MutableMap<String, String>): IAuthResponse
+
     suspend fun getRegisteredEmails(
         resolvableContext: ResolvableContext
     ): IAuthResponse
@@ -558,6 +562,20 @@ internal class AuthTFA(
         accountFlow.parameters["provider"] = "gigyaPush"
         accountFlow.parameters["mode"] = "register"
         return accountFlow.optInForPushTFA()
+    }
+
+    override suspend fun finalizeOtpInForPushAuthentication(
+        parameters: MutableMap<String, String>
+    ): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        accountFlow.withParameters(parameters)
+        return accountFlow.finalizeOptInForPushTFA()
+    }
+
+    override suspend fun verifyPushTFA(parameters: MutableMap<String, String>): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        accountFlow.withParameters(parameters)
+        return accountFlow.verifyPushTFA()
     }
 
     override suspend fun getRegisteredEmails(

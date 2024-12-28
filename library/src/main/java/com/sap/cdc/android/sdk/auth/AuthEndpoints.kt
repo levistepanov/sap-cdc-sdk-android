@@ -33,6 +33,7 @@ class AuthEndpoints {
         const val EP_TFA_FINALIZE = "accounts.tfa.finalizeTFA"
         const val EP_TFA_GET_PROVIDERS = "accounts.tfa.getProviders"
         const val EP_TFA_PUSH_OPT_IN = "accounts.tfa.push.optin"
+        const val EP_TFA_PUSH_VERIFY = "accounts.tfa.push.verify"
         const val EP_TFA_EMAIL_GET = "accounts.tfa.email.getEmails"
         const val EP_TFA_EMAILS_SEND_CODE = "accounts.tfa.email.sendVerificationCode"
         const val EP_TFA_EMAILS_COMPLETE_VERIFICATION = "accounts.tfa.email.completeVerification"

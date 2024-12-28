@@ -6,16 +6,17 @@ import java.util.concurrent.TimeUnit
 
 data class CDCNotificationOptions(
     val contentView: Class<*>? = null, // Class used for setContent
+    val actionsReceiver: Class<*>? = CDCNotificationReceiver::class.java,
     val smallIcon: Int? = android.R.drawable.ic_dialog_info,
     val backgroundColor: Int? = null, // argb color
     val autoCancel: Boolean? = true,
     val actionPositive: CDCNotificationAction? = CDCNotificationAction(title = "Approve"),
     val actionNegative: CDCNotificationAction? = CDCNotificationAction(title = "Deny"),
-    val actionsReceiver: Class<*>? = CDCNotificationReceiver::class.java,
+    val actionVerified: CDCNotificationAction? = CDCNotificationAction(title = "Verified"),
     val notificationTimeout: Long? = TimeUnit.SECONDS.toMillis(3),
     val notificationChannelTitle: String? = "CDC Authorization channel. Used for applying an" +
             " additional authentication security layer for your application",
-    )
+)
 
 data class CDCNotificationAction(
     val icon: Int? = null,

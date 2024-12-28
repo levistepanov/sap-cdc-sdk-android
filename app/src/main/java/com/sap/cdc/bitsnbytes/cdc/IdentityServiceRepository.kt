@@ -53,7 +53,6 @@ class IdentityServiceRepository private constructor(context: Context) {
      */
     var authenticationService = AuthenticationService(siteConfig)
         .registerForPushAuthentication(
-            notificationContentView = CDCPushAuthActivity::class.java,
             fcmTokenRequest = object : IFCMTokenRequest {
 
             override fun requestFCMToken() {

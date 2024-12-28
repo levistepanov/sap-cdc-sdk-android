@@ -1,6 +1,7 @@
 package com.sap.cdc.android.sdk.auth
 
 import com.sap.cdc.android.sdk.auth.notification.CDCNotificationManager
+import com.sap.cdc.android.sdk.auth.notification.CDCNotificationOptions
 import com.sap.cdc.android.sdk.auth.notification.IFCMTokenRequest
 import com.sap.cdc.android.sdk.auth.session.SessionService
 import com.sap.cdc.android.sdk.core.CoreClient
@@ -70,10 +71,11 @@ class AuthenticationService(
      */
     fun registerForPushAuthentication(
         fcmTokenRequest: IFCMTokenRequest,
-        notificationContentView: Class<*>? = null,
+        notificationOptions: CDCNotificationOptions? = CDCNotificationOptions()
     ) = apply {
         notificationManager = CDCNotificationManager(
             authenticationService = this,
+            notificationOptions = notificationOptions!!
         )
         fcmTokenRequest.requestFCMToken()
     }

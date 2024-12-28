@@ -6,9 +6,11 @@ import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_ID_TOKEN
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_SET_ACCOUNT_INFO
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_EMAILS_SEND_CODE
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_EMAIL_GET
+import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_FINALIZE
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_GET_PROVIDERS
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_INIT
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_PUSH_OPT_IN
+import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_PUSH_VERIFY
 import com.sap.cdc.android.sdk.auth.AuthResponse
 import com.sap.cdc.android.sdk.auth.AuthenticationApi
 import com.sap.cdc.android.sdk.auth.AuthenticationService.Companion.CDC_AUTHENTICATION_SERVICE_SECURE_PREFS
@@ -139,6 +141,32 @@ class AccountAuthFlow(coreClient: CoreClient, sessionService: SessionService) :
             parameters
         )
         return AuthResponse(pushOptInResponse)
+    }
+
+    suspend fun finalizeOptInForPushTFA(): IAuthResponse {
+        val verifyPushResponse = AuthenticationApi(coreClient, sessionService).genericSend(
+            EP_TFA_PUSH_VERIFY,
+            parameters
+        )
+        if (verifyPushResponse.isError()) return AuthResponse(verifyPushResponse)
+
+        // Clear parameters for reuse.
+        parameters.remove("verificationToken")
+        parameters["providerAssertion"] = verifyPushResponse.stringField("providerAssertion") ?: ""
+
+        val finalizePushResponse = AuthenticationApi(coreClient, sessionService).genericSend(
+            EP_TFA_FINALIZE,
+            parameters
+        )
+        return AuthResponse(finalizePushResponse)
+    }
+
+    suspend fun verifyPushTFA(): IAuthResponse {
+        val verifyPushResponse = AuthenticationApi(coreClient, sessionService).genericSend(
+            EP_TFA_PUSH_VERIFY,
+            parameters
+        )
+        return AuthResponse(verifyPushResponse)
     }
 
     suspend fun getRegisteredEmails(): IAuthResponse {
