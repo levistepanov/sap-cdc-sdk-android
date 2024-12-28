@@ -37,6 +37,9 @@ class AuthEndpoints {
         const val EP_TFA_EMAIL_GET = "accounts.tfa.email.getEmails"
         const val EP_TFA_EMAILS_SEND_CODE = "accounts.tfa.email.sendVerificationCode"
         const val EP_TFA_EMAILS_COMPLETE_VERIFICATION = "accounts.tfa.email.completeVerification"
+        const val EP_TFA_PHONE_GET = "accounts.tfa.phone.getRegisteredPhoneNumbers"
+        const val EP_TFA_PHONE_SEND_CODE = "accounts.tfa.phone.sendVerificationCode"
+        const val EP_TFA_PHONE_COMPLETE_VERIFICATION = "accounts.tfa.phone.completeVerification"
 
         // May be redundant cause connection can be done using notifySocialLogin with
         // loginMode = connect.

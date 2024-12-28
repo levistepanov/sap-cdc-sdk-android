@@ -2,6 +2,10 @@ package com.sap.cdc.android.sdk.auth.tfa
 
 import kotlinx.serialization.Serializable
 
+/**
+ * Created by Tal Mirmelshtein on 10/06/2024
+ * Copyright: SAP LTD.
+ */
 
 @Serializable
 data class TFAProviderEntity(
@@ -21,3 +25,17 @@ data class TFAEmailEntity(
     val obfuscated: String,
     val lastVerification: String,
 )
+
+enum class TFAPhoneMethod(val value: String) {
+    SMS("sms"), VOICE("voice")
+}
+
+@Serializable
+data class TFAPhoneEntity(
+    val id: String,
+    val obfuscated: String,
+    val lastMethod: String,
+    val lastVerification: String,
+)
+
+

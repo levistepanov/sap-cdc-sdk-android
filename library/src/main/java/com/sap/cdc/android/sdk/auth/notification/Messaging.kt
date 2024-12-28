@@ -14,7 +14,6 @@ import com.sap.cdc.android.sdk.auth.AuthenticationService
 import com.sap.cdc.android.sdk.auth.DeviceInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.launchIn
@@ -131,7 +130,7 @@ class CDCNotificationManager(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CDC_NOTIFICATIONS_CHANNEL_ID,
-                notificationOptions.notificationChannelTitle,
+                notificationOptions.channelTitle,
                 NotificationManager.IMPORTANCE_HIGH
             )
             notificationManager.createNotificationChannel(channel)
@@ -209,7 +208,7 @@ class CDCNotificationManager(
                                     return@launch
                                 }
                                 //Send notification.
-                                notify(notificationOptions.actionVerified?.title!!, "")
+                                notify(notificationOptions.notificationVerified?.title!!, "")
                             } finally {
                                 CDCDebuggable.log(LOG_TAG, "Finalized push TFA. Canceling job")
                                 // Cancel the scope once the coroutine completes
@@ -238,7 +237,7 @@ class CDCNotificationManager(
                                     return@launch
                                 }
                                 //Send notification.
-                                notify(notificationOptions.actionVerified?.title!!, "")
+                                notify(notificationOptions.notificationUnverified?.title!!, "")
                             } finally {
                                 CDCDebuggable.log(LOG_TAG, "Verified push TFA. Canceling job")
                                 // Cancel the scope once the coroutine completes
@@ -318,7 +317,7 @@ class CDCNotificationManager(
                 .setContentTitle(title?.trim { it <= ' ' } ?: "")
                 .setContentText(body?.trim { it <= ' ' } ?: "")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setTimeoutAfter(notificationOptions.notificationTimeout!!)
+                .setTimeoutAfter(notificationOptions.timeout!!)
                 .setAutoCancel(true)
 
         // Notification channel required for Android O and above.

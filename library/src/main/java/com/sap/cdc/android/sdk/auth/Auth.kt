@@ -11,11 +11,11 @@ import com.sap.cdc.android.sdk.auth.provider.IAuthenticationProvider
 import com.sap.cdc.android.sdk.auth.session.Session
 import com.sap.cdc.android.sdk.auth.session.SessionSecureLevel
 import com.sap.cdc.android.sdk.auth.session.SessionService
+import com.sap.cdc.android.sdk.auth.tfa.TFAPhoneMethod
 import com.sap.cdc.android.sdk.core.CoreClient
 import com.sap.cdc.android.sdk.core.SiteConfig
 import com.sap.cdc.android.sdk.core.api.CDCResponse
 import com.sap.cdc.android.sdk.core.api.model.CDCError
-import io.ktor.http.parameters
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -470,7 +470,6 @@ internal class AuthResolvers(
         code: String,
         resolvableContext: ResolvableContext
     ): IAuthResponse {
-        //TODO: Return error if missing required field.
         val codeVerify = LoginAuthFlow(coreClient, sessionService)
         codeVerify.parameters["vToken"] = resolvableContext.otp?.vToken!!
         codeVerify.parameters["code"] = code
@@ -484,7 +483,6 @@ internal class AuthResolvers(
         code: String,
         resolvableContext: ResolvableContext
     ): IAuthResponse {
-        //TODO: Return error if missing required field.
         val codeVerify = LoginAuthFlow(coreClient, sessionService)
         codeVerify.parameters["vToken"] = resolvableContext.otp?.vToken!!
         codeVerify.parameters["code"] = code
@@ -537,13 +535,43 @@ interface IAuthTFA {
     suspend fun verifyPushTFA(parameters: MutableMap<String, String>): IAuthResponse
 
     suspend fun getRegisteredEmails(
-        resolvableContext: ResolvableContext
+        resolvableContext: ResolvableContext,
     ): IAuthResponse
 
     suspend fun sendEmailCode(
         resolvableContext: ResolvableContext,
         emailAddress: String,
         language: String?
+    ): IAuthResponse
+
+    suspend fun registerPhone(
+        phoneNumber: String,
+        resolvableContext: ResolvableContext,
+        language: String?,
+        method: TFAPhoneMethod? = TFAPhoneMethod.SMS
+    ): IAuthResponse
+
+    suspend fun getRegisteredPhoneNumbers(
+        resolvableContext: ResolvableContext,
+    ): IAuthResponse
+
+    suspend fun sendPhoneCode(
+        resolvableContext: ResolvableContext,
+        phoneId: String,
+        method: TFAPhoneMethod? = TFAPhoneMethod.SMS,
+        language: String? = "en"
+    ): IAuthResponse
+
+    suspend fun verifyEmailCode(
+        resolvableContext: ResolvableContext,
+        code: String,
+        rememberDevice: Boolean? = false,
+    ): IAuthResponse
+
+    suspend fun verifyPhoneCode(
+        resolvableContext: ResolvableContext,
+        code: String,
+        rememberDevice: Boolean? = false
     ): IAuthResponse
 }
 
@@ -585,7 +613,7 @@ internal class AuthTFA(
         accountFlow.parameters["regToken"] = resolvableContext.regToken!!
         accountFlow.parameters["provider"] = "gigyaEmail"
         accountFlow.parameters["mode"] = "verify"
-        return accountFlow.getRegisteredEmails()
+        return accountFlow.getRegisteredEmails(resolvableContext)
     }
 
     override suspend fun sendEmailCode(
@@ -597,7 +625,67 @@ internal class AuthTFA(
         accountFlow.parameters["gigyaAssertion"] = resolvableContext.tfa?.assertion!!
         accountFlow.parameters["emailID"] = emailAddress
         accountFlow.parameters["lang"] = language ?: "en"
-        return accountFlow.sendEmailCode()
+        return accountFlow.sendEmailCode(resolvableContext)
     }
+
+    override suspend fun registerPhone(
+        phoneNumber: String,
+        resolvableContext: ResolvableContext,
+        language: String?,
+        method: TFAPhoneMethod?
+    ): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        accountFlow.parameters["regToken"] = resolvableContext.regToken!!
+        accountFlow.parameters["provider"] = "gigyaPhone"
+        accountFlow.parameters["lang"] = language ?: "en"
+        accountFlow.parameters["method"] = method?.value ?: TFAPhoneMethod.SMS.value
+        return accountFlow.registerPhone(resolvableContext, phoneNumber)
+    }
+
+    override suspend fun getRegisteredPhoneNumbers(resolvableContext: ResolvableContext): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        accountFlow.parameters["regToken"] = resolvableContext.regToken!!
+        accountFlow.parameters["provider"] = "gigyaPhone"
+        accountFlow.parameters["mode"] = "verify"
+        return accountFlow.getRegisteredPhoneNumbers(resolvableContext)
+    }
+
+    override suspend fun sendPhoneCode(
+        resolvableContext: ResolvableContext,
+        phoneId: String,
+        method: TFAPhoneMethod?,
+        language: String?
+    ): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        accountFlow.parameters["lang"] = language ?: "en"
+        accountFlow.parameters["phoneID"] = phoneId
+        accountFlow.parameters["method"] = method?.value ?: TFAPhoneMethod.SMS.value
+        return accountFlow.sendPhoneCode(resolvableContext)
+    }
+
+    override suspend fun verifyEmailCode(
+        resolvableContext: ResolvableContext,
+        code: String,
+        rememberDevice: Boolean?
+    ): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        accountFlow.parameters["gigyaAssertion"] = resolvableContext.tfa?.assertion!!
+        accountFlow.parameters["phvToken"] = resolvableContext.tfa?.phvToken!!
+        accountFlow.parameters["code"] = code
+        return accountFlow.verifyCode(resolvableContext, "email", rememberDevice = rememberDevice!!)
+    }
+
+    override suspend fun verifyPhoneCode(
+        resolvableContext: ResolvableContext,
+        code: String,
+        rememberDevice: Boolean?
+    ): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        accountFlow.parameters["gigyaAssertion"] = resolvableContext.tfa?.assertion!!
+        accountFlow.parameters["phvToken"] = resolvableContext.tfa?.phvToken!!
+        accountFlow.parameters["code"] = code
+        return accountFlow.verifyCode(resolvableContext, "phone", rememberDevice = rememberDevice!!)
+    }
+
 
 }
