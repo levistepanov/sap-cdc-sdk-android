@@ -1,5 +1,6 @@
 package com.sap.cdc.android.sdk.auth.flow
 
+import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_FINALIZE_REGISTRATION
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_GET_ACCOUNT_INFO
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_GET_CONFLICTING_ACCOUNTS
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_ACCOUNTS_ID_TOKEN_EXCHANGE
@@ -15,17 +16,18 @@ import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_PHONE_GET
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_PHONE_SEND_CODE
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_PUSH_OPT_IN
 import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_PUSH_VERIFY
+import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_TOTP_REGISTER
+import com.sap.cdc.android.sdk.auth.AuthEndpoints.Companion.EP_TFA_TOTP_VERIFY
 import com.sap.cdc.android.sdk.auth.AuthResponse
 import com.sap.cdc.android.sdk.auth.AuthenticationApi
 import com.sap.cdc.android.sdk.auth.AuthenticationService.Companion.CDC_AUTHENTICATION_SERVICE_SECURE_PREFS
 import com.sap.cdc.android.sdk.auth.AuthenticationService.Companion.CDC_DEVICE_INFO
 import com.sap.cdc.android.sdk.auth.IAuthResponse
 import com.sap.cdc.android.sdk.auth.ResolvableContext
-import com.sap.cdc.android.sdk.auth.ResolvableTFA
 import com.sap.cdc.android.sdk.auth.session.SessionService
 import com.sap.cdc.android.sdk.auth.tfa.TFAEmailEntity
 import com.sap.cdc.android.sdk.auth.tfa.TFAPhoneEntity
-import com.sap.cdc.android.sdk.auth.tfa.TFAPhoneMethod
+import com.sap.cdc.android.sdk.auth.tfa.TFAProvider
 import com.sap.cdc.android.sdk.core.CoreClient
 import com.sap.cdc.android.sdk.extensions.getEncryptedPreferences
 import kotlinx.serialization.json.Json
@@ -290,13 +292,14 @@ class AccountAuthFlow(coreClient: CoreClient, sessionService: SessionService) :
 
     suspend fun verifyCode(
         resolvableContext: ResolvableContext,
-        provider: String,
+        provider: TFAProvider,
         rememberDevice: Boolean
     ): IAuthResponse {
         val verifyCodeResponse = AuthenticationApi(coreClient, sessionService).genericSend(
             when (provider) {
-                "email" -> EP_TFA_EMAILS_COMPLETE_VERIFICATION
-                "phone" -> EP_TFA_PHONE_COMPLETE_VERIFICATION
+                TFAProvider.EMAIL -> EP_TFA_EMAILS_COMPLETE_VERIFICATION
+                TFAProvider.PHONE-> EP_TFA_PHONE_COMPLETE_VERIFICATION
+                TFAProvider.TOTP -> EP_TFA_TOTP_VERIFY
                 else -> "" // Redundant.
             },
             parameters
@@ -316,7 +319,49 @@ class AccountAuthFlow(coreClient: CoreClient, sessionService: SessionService) :
             EP_TFA_FINALIZE,
             parameters
         )
-        //TODO: call finalize registration?
-        return AuthResponse(finalizeTFAResult)
+
+        // Clear parameters for reuse.
+        parameters.clear()
+
+        // Call finalize registration to complete the flow.
+        parameters["regToken"] = resolvableContext.regToken ?: ""
+        parameters["includeUserInfo"] = "true"
+        val finalizeRegistrationResult = AuthenticationApi(coreClient, sessionService).genericSend(
+            EP_ACCOUNTS_FINALIZE_REGISTRATION,
+            parameters
+        )
+        return AuthResponse(finalizeRegistrationResult)
+    }
+
+    suspend fun registerTOTP(
+        resolvableContext: ResolvableContext
+    ): IAuthResponse {
+        val initTFAResponse = AuthenticationApi(coreClient, sessionService).genericSend(
+            EP_TFA_INIT,
+            parameters
+        )
+        if (initTFAResponse.isError()) return AuthResponse(initTFAResponse)
+
+        // Clear parameters for reuse.
+        parameters.clear()
+
+        val assertion = initTFAResponse.stringField("gigyaAssertion") ?: ""
+
+        parameters["gigyaAssertion"] = assertion
+        val registerTOTPResponse = AuthenticationApi(coreClient, sessionService).genericSend(
+            EP_TFA_TOTP_REGISTER,
+            parameters,
+        )
+
+        val qrCode = registerTOTPResponse.stringField("qrCode") ?: ""
+        val sctToken = registerTOTPResponse.stringField("sctToken") ?: ""
+
+        resolvableContext.tfa?.assertion = assertion
+        resolvableContext.tfa?.qrCode = qrCode
+        resolvableContext.tfa?.sctToken = sctToken
+
+        val authResponse = AuthResponse(registerTOTPResponse)
+        authResponse.resolvableContext = resolvableContext
+        return authResponse
     }
 }

@@ -14,7 +14,7 @@ sealed class MainScreenRoute(
     @StringRes val resourceId: Int,
     @DrawableRes val iconID: Int
 ) {
-    data object Home : MainScreenRoute("Home", R.string.home, R.drawable.ic_home)
+    data object Home : MainScreenRoute("Home", R.string.app_name, R.drawable.ic_home)
     data object Search : MainScreenRoute("Search", R.string.search, R.drawable.ic_search)
     data object Cart : MainScreenRoute("Cart", R.string.cart, R.drawable.ic_cart)
     data object Favorites : MainScreenRoute("Favorites", R.string.favorites, R.drawable.ic_favorites)
@@ -38,6 +38,7 @@ sealed class ProfileScreenRoute(
     data object OTPSignIn : ProfileScreenRoute("OTPSignIn")
     data object OTPVerify : ProfileScreenRoute("OTPVerify")
     data object LoginOptions: ProfileScreenRoute("LoginOptions")
+    data object AuthMethods: ProfileScreenRoute("AuthMethods")
 }
 
 sealed class ScreenSetsRoute(

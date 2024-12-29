@@ -3,6 +3,7 @@ package com.sap.cdc.bitsnbytes.ui.viewmodel
 import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.sap.cdc.android.sdk.auth.AuthState
+import com.sap.cdc.android.sdk.auth.ResolvableContext
 import com.sap.cdc.android.sdk.core.api.model.CDCError
 import com.sap.cdc.bitsnbytes.extensions.splitFullName
 import kotlinx.coroutines.launch
@@ -19,7 +20,8 @@ interface IEmailRegisterViewModel {
         password: String,
         name: String,
         onLogin: () -> Unit,
-        onFailedWith: (CDCError?) -> Unit
+        onFailedWith: (CDCError?) -> Unit,
+        onPendingTFARegistration: (resolvableContext: ResolvableContext?) -> Unit
     ) {
         //Stub
     }
@@ -41,7 +43,8 @@ class EmailRegisterViewModel(context: Context) : BaseViewModel(context), IEmailR
         password: String,
         name: String,
         onLogin: () -> Unit,
-        onFailedWith: (CDCError?) -> Unit
+        onFailedWith: (CDCError?) -> Unit,
+        onPendingTFARegistration: (resolvableContext: ResolvableContext?) -> Unit
     ) {
         viewModelScope.launch {
             val namePair = name.splitFullName()
@@ -57,6 +60,13 @@ class EmailRegisterViewModel(context: Context) : BaseViewModel(context), IEmailR
             when (authResponse.state()) {
                 AuthState.SUCCESS -> {
                     onLogin()
+                }
+
+                AuthState.INTERRUPTED -> {
+                    if (authResponse.cdcResponse()
+                            .errorCode() == ResolvableContext.ERR_ERROR_PENDING_TWO_FACTOR_REGISTRATION
+                    )
+                        onPendingTFARegistration(authResponse.resolvable())
                 }
 
                 else -> {

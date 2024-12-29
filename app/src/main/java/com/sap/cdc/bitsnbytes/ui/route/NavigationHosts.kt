@@ -10,6 +10,7 @@ import com.sap.cdc.android.sdk.auth.ResolvableContext
 import com.sap.cdc.bitsnbytes.cdc.IdentityServiceRepository
 import com.sap.cdc.bitsnbytes.ui.view.custom.AuthenticationTabView
 import com.sap.cdc.bitsnbytes.ui.view.flow.AboutMeView
+import com.sap.cdc.bitsnbytes.ui.view.flow.AuthMethodsScreen
 import com.sap.cdc.bitsnbytes.ui.view.flow.EmailRegisterView
 import com.sap.cdc.bitsnbytes.ui.view.flow.EmailSignInView
 import com.sap.cdc.bitsnbytes.ui.view.flow.HomeView
@@ -181,6 +182,11 @@ fun ProfileNavHost() {
         }
         composable(ProfileScreenRoute.LoginOptions.route) {
             LoginOptionsView(viewModel = LoginOptionsViewModel(LocalContext.current))
+        }
+        composable("${ProfileScreenRoute.AuthMethods.route}/{resolvableContext}") {  backStackEntry ->
+            val resolvableJson = backStackEntry.arguments?.getString("resolvableContext")
+            val resolvable = Json.decodeFromString<ResolvableContext>(resolvableJson!!)
+            AuthMethodsScreen(resolvable)
         }
     }
 }

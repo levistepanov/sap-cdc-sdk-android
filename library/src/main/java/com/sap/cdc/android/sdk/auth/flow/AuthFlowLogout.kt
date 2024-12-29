@@ -25,8 +25,9 @@ class LogoutAuthFlow(coreClient: CoreClient, sessionService: SessionService) :
     suspend fun logout(): IAuthResponse {
         val logoutResponse =
             AuthenticationApi(coreClient, sessionService).genericSend(EP_ACCOUNTS_LOGOUT)
-        if (!logoutResponse.isError()) {
+        if (!logoutResponse.isError() || logoutResponse.errorCode() == 403005) {
             // Invalidate session if the response does not contain any errors.
+            // If an "Unauthorized user" (403005) error is received, the session is already invalidated in the backend.
             sessionService.invalidateSession()
             clearCookies()
         }

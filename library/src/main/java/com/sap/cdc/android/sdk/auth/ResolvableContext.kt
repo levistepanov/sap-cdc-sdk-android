@@ -3,7 +3,6 @@ package com.sap.cdc.android.sdk.auth
 import com.sap.cdc.android.sdk.auth.model.ConflictingAccountsEntity
 import com.sap.cdc.android.sdk.auth.tfa.TFAEmailEntity
 import com.sap.cdc.android.sdk.auth.tfa.TFAPhoneEntity
-import com.sap.cdc.android.sdk.auth.tfa.TFAProviderEntity
 import com.sap.cdc.android.sdk.auth.tfa.TFAProvidersEntity
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -73,4 +72,6 @@ data class ResolvableTFA(
     var tfaProviders: TFAProvidersEntity? = null,
     var emails: List<TFAEmailEntity>? = null,
     var phones: List<TFAPhoneEntity>? = null,
+    var qrCode: String? = null,
+    var sctToken: String? = null,
 )

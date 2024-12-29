@@ -162,6 +162,13 @@ fun EmailRegisterView(viewModel: IEmailRegisterViewModel) {
                             loading = false
                             NavigationCoordinator.INSTANCE.navigate(ProfileScreenRoute.MyProfile.route)
                         },
+                        onPendingTFARegistration = { resolvableContext ->
+                            loading = false
+                            // Handle TFA registration.
+                            NavigationCoordinator.INSTANCE.navigate(
+                                "${ProfileScreenRoute.AuthMethods.route}/${resolvableContext?.toJson()}"
+                            )
+                        },
                         onFailedWith = { error ->
                             loading = false
                             if (error != null) {

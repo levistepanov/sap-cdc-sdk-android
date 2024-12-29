@@ -12,6 +12,7 @@ import com.sap.cdc.android.sdk.auth.session.Session
 import com.sap.cdc.android.sdk.auth.session.SessionSecureLevel
 import com.sap.cdc.android.sdk.auth.session.SessionService
 import com.sap.cdc.android.sdk.auth.tfa.TFAPhoneMethod
+import com.sap.cdc.android.sdk.auth.tfa.TFAProvider
 import com.sap.cdc.android.sdk.core.CoreClient
 import com.sap.cdc.android.sdk.core.SiteConfig
 import com.sap.cdc.android.sdk.core.api.CDCResponse
@@ -551,9 +552,11 @@ interface IAuthTFA {
         method: TFAPhoneMethod? = TFAPhoneMethod.SMS
     ): IAuthResponse
 
-    suspend fun getRegisteredPhoneNumbers(
+    suspend fun registerTOTP(
         resolvableContext: ResolvableContext,
     ): IAuthResponse
+    
+    suspend fun getRegisteredPhoneNumbers(resolvableContext: ResolvableContext): IAuthResponse
 
     suspend fun sendPhoneCode(
         resolvableContext: ResolvableContext,
@@ -573,6 +576,12 @@ interface IAuthTFA {
         code: String,
         rememberDevice: Boolean? = false
     ): IAuthResponse
+
+    suspend fun verifyTOTPCode(
+        resolvableContext: ResolvableContext,
+        code: String,
+        rememberDevice: Boolean? = false
+    ): IAuthResponse
 }
 
 internal class AuthTFA(
@@ -587,7 +596,7 @@ internal class AuthTFA(
 
     override suspend fun optInForPushAuthentication(): IAuthResponse {
         val accountFlow = AccountAuthFlow(coreClient, sessionService)
-        accountFlow.parameters["provider"] = "gigyaPush"
+        accountFlow.parameters["provider"] = TFAProvider.PUSH.value
         accountFlow.parameters["mode"] = "register"
         return accountFlow.optInForPushTFA()
     }
@@ -611,7 +620,7 @@ internal class AuthTFA(
     ): IAuthResponse {
         val accountFlow = AccountAuthFlow(coreClient, sessionService)
         accountFlow.parameters["regToken"] = resolvableContext.regToken!!
-        accountFlow.parameters["provider"] = "gigyaEmail"
+        accountFlow.parameters["provider"] = TFAProvider.EMAIL.value
         accountFlow.parameters["mode"] = "verify"
         return accountFlow.getRegisteredEmails(resolvableContext)
     }
@@ -636,16 +645,25 @@ internal class AuthTFA(
     ): IAuthResponse {
         val accountFlow = AccountAuthFlow(coreClient, sessionService)
         accountFlow.parameters["regToken"] = resolvableContext.regToken!!
-        accountFlow.parameters["provider"] = "gigyaPhone"
+        accountFlow.parameters["provider"] = TFAProvider.PHONE.value
         accountFlow.parameters["lang"] = language ?: "en"
+        accountFlow.parameters["mode"] = "register"
         accountFlow.parameters["method"] = method?.value ?: TFAPhoneMethod.SMS.value
         return accountFlow.registerPhone(resolvableContext, phoneNumber)
+    }
+
+    override suspend fun registerTOTP(resolvableContext: ResolvableContext): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        accountFlow.parameters["regToken"] = resolvableContext.regToken!!
+        accountFlow.parameters["provider"] = TFAProvider.TOTP.value
+        accountFlow.parameters["mode"] = "register"
+        return accountFlow.registerTOTP(resolvableContext)
     }
 
     override suspend fun getRegisteredPhoneNumbers(resolvableContext: ResolvableContext): IAuthResponse {
         val accountFlow = AccountAuthFlow(coreClient, sessionService)
         accountFlow.parameters["regToken"] = resolvableContext.regToken!!
-        accountFlow.parameters["provider"] = "gigyaPhone"
+        accountFlow.parameters["provider"] = TFAProvider.PHONE.value
         accountFlow.parameters["mode"] = "verify"
         return accountFlow.getRegisteredPhoneNumbers(resolvableContext)
     }
@@ -672,7 +690,7 @@ internal class AuthTFA(
         accountFlow.parameters["gigyaAssertion"] = resolvableContext.tfa?.assertion!!
         accountFlow.parameters["phvToken"] = resolvableContext.tfa?.phvToken!!
         accountFlow.parameters["code"] = code
-        return accountFlow.verifyCode(resolvableContext, "email", rememberDevice = rememberDevice!!)
+        return accountFlow.verifyCode(resolvableContext, TFAProvider.EMAIL, rememberDevice = rememberDevice!!)
     }
 
     override suspend fun verifyPhoneCode(
@@ -684,8 +702,19 @@ internal class AuthTFA(
         accountFlow.parameters["gigyaAssertion"] = resolvableContext.tfa?.assertion!!
         accountFlow.parameters["phvToken"] = resolvableContext.tfa?.phvToken!!
         accountFlow.parameters["code"] = code
-        return accountFlow.verifyCode(resolvableContext, "phone", rememberDevice = rememberDevice!!)
+        return accountFlow.verifyCode(resolvableContext, TFAProvider.PHONE, rememberDevice = rememberDevice!!)
     }
 
+    override suspend fun verifyTOTPCode(
+        resolvableContext: ResolvableContext,
+        code: String,
+        rememberDevice: Boolean?
+    ): IAuthResponse {
+        val accountFlow = AccountAuthFlow(coreClient, sessionService)
+        accountFlow.parameters["gigyaAssertion"] = resolvableContext.tfa?.assertion!!
+        accountFlow.parameters["code"] = code
+        accountFlow.parameters["sctToken"] = resolvableContext.tfa?.sctToken!!
+        return accountFlow.verifyCode(resolvableContext, TFAProvider.TOTP, rememberDevice = rememberDevice!!)
+    }
 
 }

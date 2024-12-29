@@ -26,6 +26,10 @@ data class TFAEmailEntity(
     val lastVerification: String,
 )
 
+enum class TFAProvider(val value: String) {
+    EMAIL("gigyaEmail"), PHONE("gigyaPhone"), PUSH("gigyaPush"), TOTP("gigyaTotp")
+}
+
 enum class TFAPhoneMethod(val value: String) {
     SMS("sms"), VOICE("voice")
 }
