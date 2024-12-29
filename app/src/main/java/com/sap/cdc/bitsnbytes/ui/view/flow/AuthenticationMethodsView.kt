@@ -17,9 +17,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sap.cdc.android.sdk.auth.ResolvableContext
+import com.sap.cdc.android.sdk.auth.ResolvableTFA
+import com.sap.cdc.android.sdk.auth.tfa.TFAProvider
+import com.sap.cdc.android.sdk.auth.tfa.TFAProviderEntity
+import com.sap.cdc.android.sdk.auth.tfa.TFAProvidersEntity
 import com.sap.cdc.bitsnbytes.R
 import com.sap.cdc.bitsnbytes.ui.route.NavigationCoordinator
-import com.sap.cdc.bitsnbytes.ui.route.ProfileScreenRoute
 import com.sap.cdc.bitsnbytes.ui.theme.AppTheme
 import com.sap.cdc.bitsnbytes.ui.view.custom.ActionTextButton
 import com.sap.cdc.bitsnbytes.ui.view.custom.IconAndTextOutlineButton
@@ -52,40 +55,26 @@ fun AuthMethodsScreen(
         )
         MediumVerticalSpacer()
 
-        // Email TFA
-        IconAndTextOutlineButton(
-            modifier = Modifier.size(width = 240.dp, height = 44.dp),
-            text = "Send Code to Email",
-            onClick = {
-                NavigationCoordinator.INSTANCE.navigate("${ProfileScreenRoute.AuthTabView.route}/1")
-            },
-            iconResourceId = R.drawable.ic_email,
+        if (resolvableContext.tfa != null) {
+            if (resolvableContext.tfa?.tfaProviders?.activeProviders?.isNotEmpty()!!) {
+                // Active providers == TFA verification flow.
+                AuthMethodsView(
+                    resolvableContext.tfa?.tfaProviders?.activeProviders!!,
+                    onItemClick = { provider ->
 
-            )
-        Spacer(modifier = Modifier.size(10.dp))
+                    }
+                )
+            } else if (resolvableContext.tfa?.tfaProviders?.inactiveProviders?.isNotEmpty()!!) {
+                // Inactive providers == TFA registration flow.
+                AuthMethodsView(
+                    resolvableContext.tfa?.tfaProviders?.inactiveProviders!!,
+                    onItemClick = { provider ->
 
-        // Phone TFA
-        IconAndTextOutlineButton(
-            modifier = Modifier.size(width = 240.dp, height = 44.dp),
-            text = "Send Code to Phone",
-            onClick = {
-                NavigationCoordinator.INSTANCE.navigate("${ProfileScreenRoute.AuthTabView.route}/1")
-            },
-            iconResourceId = R.drawable.ic_device,
+                    }
+                )
+            }
+        }
 
-            )
-        Spacer(modifier = Modifier.size(10.dp))
-
-        // TOTP TFA
-        IconAndTextOutlineButton(
-            modifier = Modifier.size(width = 240.dp, height = 44.dp),
-            text = "Use a TOTP App",
-            onClick = {
-                NavigationCoordinator.INSTANCE.navigate("${ProfileScreenRoute.AuthTabView.route}/1")
-            },
-            iconResourceId = R.drawable.ic_lock,
-
-            )
         Spacer(modifier = Modifier.size(10.dp))
 
         LargeVerticalSpacer()
@@ -93,7 +82,7 @@ fun AuthMethodsScreen(
         ActionTextButton(
             "Back to login screen"
         ) {
-
+            NavigationCoordinator.INSTANCE.navigateUp()
         }
     }
 }
@@ -102,6 +91,101 @@ fun AuthMethodsScreen(
 @Composable
 fun AuthMethodsScreenPreview() {
     AppTheme {
-        AuthMethodsScreen(ResolvableContext())
+        AuthMethodsScreen(
+            ResolvableContext(
+                tfa = ResolvableTFA(
+                    tfaProviders = TFAProvidersEntity(
+                        activeProviders = listOf(
+                            TFAProviderEntity(TFAProvider.EMAIL.value, "high"),
+                            TFAProviderEntity(TFAProvider.PHONE.value, "high"),
+                            TFAProviderEntity(TFAProvider.TOTP.value, "high")
+                        )
+                    )
+                )
+            )
+        )
     }
 }
+
+@Composable
+fun AuthMethodsView(
+    authProviders: List<TFAProviderEntity>,
+    onItemClick: (String) -> Unit = {}
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .background(Color.White)
+            .fillMaxWidth()
+    ) {
+        authProviders.forEach {
+            IconAndTextOutlineButton(
+                modifier = Modifier.size(width = 240.dp, height = 44.dp),
+                text = titleForAuthProvider(it.name),
+                onClick = {
+                    onItemClick(it.name)
+                },
+                iconResourceId = iconForAuthProvider(it.name),
+
+                )
+            Spacer(modifier = Modifier.size(10.dp))
+        }
+    }
+}
+
+@Preview
+@Composable
+fun AuthMethodsViewPreview() {
+    AppTheme {
+        AuthMethodsView(
+            listOf(
+                TFAProviderEntity(TFAProvider.PHONE.value, "high"),
+                TFAProviderEntity(TFAProvider.TOTP.value, "high")
+            )
+        )
+    }
+}
+
+@Composable
+fun titleForAuthProvider(provider: String): String {
+    when (provider) {
+        TFAProvider.EMAIL.value -> {
+            return "Send Code to Email"
+        }
+
+        TFAProvider.PHONE.value -> {
+            return "Send Code to Phone"
+        }
+
+        TFAProvider.TOTP.value -> {
+            return "Use a TOTP App"
+        }
+
+        else -> {
+            return "Unknown"
+        }
+    }
+}
+
+@Composable
+fun iconForAuthProvider(provider: String): Int {
+    when (provider) {
+        TFAProvider.EMAIL.value -> {
+            return R.drawable.ic_email
+        }
+
+        TFAProvider.PHONE.value -> {
+            return R.drawable.ic_device
+        }
+
+        TFAProvider.TOTP.value -> {
+            return R.drawable.ic_lock
+        }
+
+        else -> {
+            return R.drawable.ic_logo
+        }
+    }
+}
+
+

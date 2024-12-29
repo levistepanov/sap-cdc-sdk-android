@@ -130,6 +130,12 @@ fun EmailSignInView(viewModel: IEmailSignInViewModel) {
                         },
                         onLoginIdentifierExists = {
                             loading = false
+                        },
+                        onPendingTwoFactorRegistration =  { resolvableContext ->
+                            loading = false
+                            NavigationCoordinator.INSTANCE.navigate(
+                                "${ProfileScreenRoute.AuthMethods.route}/${resolvableContext?.toJson()}"
+                            )
                         }
                     )
                 }

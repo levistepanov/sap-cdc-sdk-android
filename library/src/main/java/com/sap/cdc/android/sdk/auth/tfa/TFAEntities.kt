@@ -10,13 +10,14 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class TFAProviderEntity(
     val name: String,
-    val authLevel: String
+    val authLevel: String? = null,
+    val capabilities: List<String> = emptyList(),
 )
 
 @Serializable
 data class TFAProvidersEntity(
-    val activeProviders: List<TFAProviderEntity> = emptyList(),
-    val inactiveProviders: List<TFAProviderEntity> = emptyList()
+    val activeProviders: List<TFAProviderEntity>? = emptyList(),
+    val inactiveProviders: List<TFAProviderEntity>? = emptyList()
 )
 
 @Serializable
@@ -27,11 +28,15 @@ data class TFAEmailEntity(
 )
 
 enum class TFAProvider(val value: String) {
-    EMAIL("gigyaEmail"), PHONE("gigyaPhone"), PUSH("gigyaPush"), TOTP("gigyaTotp")
+    EMAIL("gigyaEmail"),
+    PHONE("gigyaPhone"),
+    PUSH("gigyaPush"),
+    TOTP("gigyaTotp")
 }
 
 enum class TFAPhoneMethod(val value: String) {
-    SMS("sms"), VOICE("voice")
+    SMS("sms"),
+    VOICE("voice")
 }
 
 @Serializable

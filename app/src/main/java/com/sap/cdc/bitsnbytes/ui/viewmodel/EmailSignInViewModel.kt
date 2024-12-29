@@ -19,7 +19,8 @@ interface IEmailSignInViewModel {
         password: String,
         onLogin: () -> Unit,
         onLoginIdentifierExists: () -> Unit,
-        onFailedWith: (CDCError?) -> Unit
+        onFailedWith: (CDCError?) -> Unit,
+        onPendingTwoFactorRegistration: (resolvableContext: ResolvableContext?) -> Unit,
     ) {
         //Stub
     }
@@ -41,7 +42,8 @@ class EmailSignInViewModel(context: Context) : BaseViewModel(context), IEmailSig
         password: String,
         onLogin: () -> Unit,
         onLoginIdentifierExists: () -> Unit,
-        onFailedWith: (CDCError?) -> Unit
+        onFailedWith: (CDCError?) -> Unit,
+        onPendingTwoFactorRegistration: (resolvableContext: ResolvableContext?) -> Unit,
     ) {
         viewModelScope.launch {
             val authResponse = identityService.login(email, password)
@@ -58,6 +60,10 @@ class EmailSignInViewModel(context: Context) : BaseViewModel(context), IEmailSig
                     when (authResponse.cdcResponse().errorCode()) {
                         ResolvableContext.ERR_ENTITY_EXIST_CONFLICT -> {
                             onLoginIdentifierExists()
+                        }
+
+                        ResolvableContext.ERR_ERROR_PENDING_TWO_FACTOR_REGISTRATION -> {
+                            onPendingTwoFactorRegistration(authResponse.resolvable())
                         }
                     }
                 }
