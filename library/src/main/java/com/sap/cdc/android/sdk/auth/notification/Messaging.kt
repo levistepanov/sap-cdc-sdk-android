@@ -109,6 +109,10 @@ class CDCNotificationManager(
     private lateinit var notificationManager: NotificationManagerCompat
 
     init {
+        // Reference context.
+        val context = authenticationService.siteConfig.applicationContext
+        notificationManager = NotificationManagerCompat.from(context)
+
         // Create a new CoroutineScope with a Job
         val job = Job()
         val scope = CoroutineScope(Dispatchers.Main + job)
@@ -122,11 +126,7 @@ class CDCNotificationManager(
             }
         }
 
-        // Reference context.
-        val context = authenticationService.siteConfig.applicationContext
-
         // Create notification manager.
-        val notificationManager = NotificationManagerCompat.from(context)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CDC_NOTIFICATIONS_CHANNEL_ID,
@@ -280,6 +280,8 @@ class CDCNotificationManager(
         // Notify.
         if (notificationManager.areNotificationsEnabled()) {
             notificationManager.notify(SecureRandom().nextInt(), builder.build())
+        } else {
+            CDCDebuggable.log(LOG_TAG, "Notifications permissions not enabled.")
         }
     }
 
@@ -390,6 +392,8 @@ class CDCNotificationManager(
         // Notify.
         if (notificationManager.areNotificationsEnabled()) {
             notificationManager.notify(notificationId, builder.build())
+        } else {
+            CDCDebuggable.log(LOG_TAG, "Notifications permissions not enabled.")
         }
     }
 

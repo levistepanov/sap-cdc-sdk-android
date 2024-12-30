@@ -23,6 +23,7 @@ import com.sap.cdc.android.sdk.auth.tfa.TFAProviderEntity
 import com.sap.cdc.android.sdk.auth.tfa.TFAProvidersEntity
 import com.sap.cdc.bitsnbytes.R
 import com.sap.cdc.bitsnbytes.ui.route.NavigationCoordinator
+import com.sap.cdc.bitsnbytes.ui.route.ProfileScreenRoute
 import com.sap.cdc.bitsnbytes.ui.theme.AppTheme
 import com.sap.cdc.bitsnbytes.ui.view.custom.ActionTextButton
 import com.sap.cdc.bitsnbytes.ui.view.custom.IconAndTextOutlineButton
@@ -61,7 +62,19 @@ fun AuthMethodsScreen(
                 AuthMethodsView(
                     resolvableContext.tfa?.tfaProviders?.activeProviders!!,
                     onItemClick = { provider ->
+                        when (provider) {
+                            TFAProvider.EMAIL.value -> {
+                                NavigationCoordinator.INSTANCE.navigateUp()
+                            }
 
+                            TFAProvider.PHONE.value -> {
+                                NavigationCoordinator.INSTANCE.navigateUp()
+                            }
+
+                            TFAProvider.TOTP.value -> {
+                                NavigationCoordinator.INSTANCE.navigateUp()
+                            }
+                        }
                     }
                 )
             } else if (resolvableContext.tfa?.tfaProviders?.inactiveProviders?.isNotEmpty()!!) {
@@ -69,7 +82,18 @@ fun AuthMethodsScreen(
                 AuthMethodsView(
                     resolvableContext.tfa?.tfaProviders?.inactiveProviders!!,
                     onItemClick = { provider ->
+                        when (provider) {
+                            TFAProvider.PHONE.value -> {
+                                // Start phone TFA registration flow.
+                                NavigationCoordinator.INSTANCE.navigate(
+                                    "${ProfileScreenRoute.RegisterPhone.route}/${resolvableContext.toJson()}"
+                                )
+                            }
 
+                            TFAProvider.TOTP.value -> {
+                                // Start TOTP TFA registration flow.
+                            }
+                        }
                     }
                 )
             }

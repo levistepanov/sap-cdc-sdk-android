@@ -39,6 +39,7 @@ sealed class ProfileScreenRoute(
     data object OTPVerify : ProfileScreenRoute("OTPVerify")
     data object LoginOptions: ProfileScreenRoute("LoginOptions")
     data object AuthMethods: ProfileScreenRoute("AuthMethods")
+    data object RegisterPhone: ProfileScreenRoute("RegisterPhone")
 }
 
 sealed class ScreenSetsRoute(

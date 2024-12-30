@@ -21,6 +21,7 @@ import com.sap.cdc.bitsnbytes.ui.view.flow.OTPType
 import com.sap.cdc.bitsnbytes.ui.view.flow.OtpSignInView
 import com.sap.cdc.bitsnbytes.ui.view.flow.OtpVerifyView
 import com.sap.cdc.bitsnbytes.ui.view.flow.PendingRegistrationView
+import com.sap.cdc.bitsnbytes.ui.view.flow.RegisterPhoneScreen
 import com.sap.cdc.bitsnbytes.ui.view.flow.RegisterView
 import com.sap.cdc.bitsnbytes.ui.view.flow.ScreenSetView
 import com.sap.cdc.bitsnbytes.ui.view.flow.SignInView
@@ -34,6 +35,7 @@ import com.sap.cdc.bitsnbytes.ui.viewmodel.MyProfileViewModel
 import com.sap.cdc.bitsnbytes.ui.viewmodel.OtpSignInViewModel
 import com.sap.cdc.bitsnbytes.ui.viewmodel.OtpVerifyViewModel
 import com.sap.cdc.bitsnbytes.ui.viewmodel.PendingRegistrationViewModel
+import com.sap.cdc.bitsnbytes.ui.viewmodel.RegisterPhoneViewModel
 import com.sap.cdc.bitsnbytes.ui.viewmodel.RegisterViewModel
 import com.sap.cdc.bitsnbytes.ui.viewmodel.ScreenSetViewModel
 import com.sap.cdc.bitsnbytes.ui.viewmodel.SignInViewModel
@@ -118,7 +120,7 @@ fun ProfileNavHost() {
         }
         composable("${ProfileScreenRoute.AuthTabView.route}/{selected}") { backStackEntry ->
             val selected = backStackEntry.arguments?.getString("selected")
-            AuthenticationTabView(selected = selected!!.toInt(),)
+            AuthenticationTabView(selected = selected!!.toInt())
         }
         composable(ProfileScreenRoute.EmailSignIn.route) {
             EmailSignInView(viewModel = EmailSignInViewModel(LocalContext.current))
@@ -183,10 +185,18 @@ fun ProfileNavHost() {
         composable(ProfileScreenRoute.LoginOptions.route) {
             LoginOptionsView(viewModel = LoginOptionsViewModel(LocalContext.current))
         }
-        composable("${ProfileScreenRoute.AuthMethods.route}/{resolvableContext}") {  backStackEntry ->
+        composable("${ProfileScreenRoute.AuthMethods.route}/{resolvableContext}") { backStackEntry ->
             val resolvableJson = backStackEntry.arguments?.getString("resolvableContext")
             val resolvable = Json.decodeFromString<ResolvableContext>(resolvableJson!!)
             AuthMethodsScreen(resolvable)
+        }
+        composable("${ProfileScreenRoute.RegisterPhone.route}/{resolvableContext}") { backStackEntry ->
+            val resolvableJson = backStackEntry.arguments?.getString("resolvableContext")
+            val resolvable = Json.decodeFromString<ResolvableContext>(resolvableJson!!)
+            RegisterPhoneScreen(
+                resolvableContext = resolvable,
+                viewModel = RegisterPhoneViewModel(LocalContext.current)
+            )
         }
     }
 }

@@ -2,7 +2,6 @@ package com.sap.cdc.bitsnbytes.ui.view.flow
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,9 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -23,7 +19,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
@@ -36,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import com.sap.cdc.bitsnbytes.ui.route.NavigationCoordinator
 import com.sap.cdc.bitsnbytes.ui.route.ProfileScreenRoute
 import com.sap.cdc.bitsnbytes.ui.view.custom.IndeterminateLinearIndicator
+import com.sap.cdc.bitsnbytes.ui.view.custom.LoadingStateColumn
+import com.sap.cdc.bitsnbytes.ui.view.custom.SimpleErrorMessages
 import com.sap.cdc.bitsnbytes.ui.viewmodel.IOtpSignInViewModel
 import com.sap.cdc.bitsnbytes.ui.viewmodel.OtpSignInViewModelPreview
 
@@ -68,8 +65,8 @@ fun OtpSignInView(
 
     val focusManager = LocalFocusManager.current
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    LoadingStateColumn(
+        loading = loading,
         modifier = Modifier
             .background(Color.White)
             .fillMaxWidth()
@@ -151,26 +148,6 @@ fun OtpSignInView(
                 },
             )
 
-            Spacer(modifier = Modifier.size(6.dp))
-
-            if (signInError.isNotEmpty()) {
-                Spacer(modifier = Modifier.size(12.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.Cancel,
-                        contentDescription = "",
-                        tint = Color.Red
-                    )
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text(
-                        text = signInError,
-                        color = Color.Red,
-                    )
-                }
-            }
-
             Spacer(modifier = Modifier.size(48.dp))
 
             OutlinedButton(modifier = Modifier
@@ -198,6 +175,13 @@ fun OtpSignInView(
 
                 }) {
                 Text("Send code")
+            }
+
+            // Error message
+            if (signInError.isNotEmpty()) {
+                SimpleErrorMessages(
+                    text = signInError
+                )
             }
         }
 
